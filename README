@@ -1,3 +1,11 @@
+| Hostname       | IP Address   | Role                    |
+| -------------- | ------------ | ----------------------- |
+| lb.example.com | 192.168.1.70 | Load Balancer (HAProxy) |
+| mn1            | 192.168.1.41 | Backend Node 1          |
+| mn2            | 192.168.1.42 | Backend Node 2          |
+| mn3            | 192.168.1.43 | Backend Node 3          |
+
+
 [root@tower1 nginx-lb]# cat inventory.yml
 all:
   hosts:
@@ -100,4 +108,5 @@ all:
 
 
 ansible-playbook -i inventory.yml deploy_web.yml		---- deploys web page on three nodes
+
 ansible-playbook -i inventory.yml haproxy_setup.yml		---- deploys haproxy on lb.example.com with backend nodes mn1 mn2 and mn3
