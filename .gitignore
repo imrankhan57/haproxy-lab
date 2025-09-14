@@ -1,0 +1,6 @@
+*.log
+*.retry
+*.pyc
+*.swp
+.vagrant/
+*.pem

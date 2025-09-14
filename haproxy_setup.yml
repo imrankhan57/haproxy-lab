@@ -1,0 +1,44 @@
+---
+- name: Install and configure HAProxy load balancer
+  hosts: lb.example.com
+  become: yes
+  tasks:
+    - name: Install HAProxy
+      package:
+        name: haproxy
+        state: present
+
+    - name: Configure HAProxy
+      copy:
+        dest: /etc/haproxy/haproxy.cfg
+        content: |
+          global
+              log /dev/log    local0
+              log /dev/log    local1 notice
+              daemon
+
+          defaults
+              log     global
+              mode    http
+              option  httplog
+              option  dontlognull
+              timeout connect 5000
+              timeout client  50000
+              timeout server  50000
+
+          frontend http_front
+              bind *:80
+              default_backend http_back
+
+          backend http_back
+              balance roundrobin
+              server mn1 192.168.1.41:80 check
+              server mn2 192.168.1.42:80 check
+              server mn3 192.168.1.43:80 check
+
+    - name: Enable and restart HAProxy
+      service:
+        name: haproxy
+        state: restarted
+        enabled: yes
+

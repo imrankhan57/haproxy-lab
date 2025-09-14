@@ -1,0 +1,40 @@
+---
+- name: Deploy simple web page on backend nodes
+  hosts: mn1,mn2,mn3
+  become: true
+  vars:
+    web_root: /usr/share/nginx/html
+    web_pkg: nginx   # you can switch to httpd if you prefer
+
+  tasks:
+    - name: Install web server
+      ansible.builtin.yum:
+        name: "{{ web_pkg }}"
+        state: present
+
+    - name: Ensure web root directory exists
+      ansible.builtin.file:
+        path: "{{ web_root }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+
+    - name: Create index.html with hostname
+      ansible.builtin.copy:
+        dest: "{{ web_root }}/index.html"
+        content: |
+          <html>
+          <head><title>Test Page</title></head>
+          <body>
+            <h1><b>Welcome to {{ inventory_hostname }}</b></h1>
+          </body>
+          </html>
+        mode: '0644'
+
+    - name: Enable and start web service
+      ansible.builtin.systemd:
+        name: "{{ web_pkg }}"
+        state: started
+        enabled: true
+
