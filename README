@@ -1,112 +1,49 @@
-| Hostname       | IP Address   | Role                    |
-| -------------- | ------------ | ----------------------- |
-| lb.example.com | 192.168.1.70 | Load Balancer (HAProxy) |
-| mn1            | 192.168.1.41 | Backend Node 1          |
-| mn2            | 192.168.1.42 | Backend Node 2          |
-| mn3            | 192.168.1.43 | Backend Node 3          |
+# HAProxy Lab with Ansible Automation
 
+This lab demonstrates a **HAProxy load balancer setup** distributing traffic across multiple backend nodes. All servers are managed via **Ansible** for automation and consistency. This setup is ideal for learning HAProxy, multi-node orchestration, and infrastructure as code.
 
-[root@tower1 nginx-lb]# cat inventory.yml
-all:
-  hosts:
-    lb.example.com:
-      ansible_host: 192.168.1.70
-    mn1:
-      ansible_host: 192.168.1.41
-    mn2:
-      ansible_host: 192.168.1.42
-    mn3:
-      ansible_host: 192.168.1.43
-==============
-[root@tower1 nginx-lb]# cat deploy_web.yml
 ---
-- name: Deploy simple web page on backend nodes
-  hosts: mn1,mn2,mn3
-  become: true
-  vars:
-    web_root: /usr/share/nginx/html
-    web_pkg: nginx   # you can switch to httpd if you prefer
 
-  tasks:
-    - name: Install web server
-      ansible.builtin.yum:
-        name: "{{ web_pkg }}"
-        state: present
+## **Lab Topology**
 
-    - name: Ensure web root directory exists
-      ansible.builtin.file:
-        path: "{{ web_root }}"
-        state: directory
-        owner: root
-        group: root
-        mode: '0755'
+      +-----------------+
+      | lb.example.com  |
+      | 192.168.1.70    |
+      | Load Balancer    |
+      +--------+--------+
+               |
+      ---------------------
+      |         |         |
+  +---+---+ +---+---+ +---+---+
+  | mn1    | | mn2    | | mn3    |
+  |192.168.1.41|192.168.1.42|192.168.1.43|
+  |Backend 1 | |Backend 2 | |Backend 3 |
+  +---------+ +---------+ +---------+
 
-    - name: Create index.html with hostname
-      ansible.builtin.copy:
-        dest: "{{ web_root }}/index.html"
-        content: |
-          <html>
-          <head><title>Test Page</title></head>
-          <body>
-            <h1><b>Welcome to {{ inventory_hostname }}</b></h1>
-          </body>
-          </html>
-        mode: '0644'
-
-    - name: Enable and start web service
-      ansible.builtin.systemd:
-        name: "{{ web_pkg }}"
-        state: started
-        enabled: true
-		
-		========================================
 ---
-- name: Install and configure HAProxy load balancer
-  hosts: lb.example.com
-  become: yes
-  tasks:
-    - name: Install HAProxy
-      package:
-        name: haproxy
-        state: present
 
-    - name: Configure HAProxy
-      copy:
-        dest: /etc/haproxy/haproxy.cfg
-        content: |
-          global
-              log /dev/log    local0
-              log /dev/log    local1 notice
-              daemon
+## **Inventory**
 
-          defaults
-              log     global
-              mode    http
-              option  httplog
-              option  dontlognull
-              timeout connect 5000
-              timeout client  50000
-              timeout server  50000
+| Hostname        | IP Address     | Role                     |
+|-----------------|---------------|--------------------------|
+| lb.example.com  | 192.168.1.70  | Load Balancer (HAProxy)  |
+| mn1             | 192.168.1.41  | Backend Node 1           |
+| mn2             | 192.168.1.42  | Backend Node 2           |
+| mn3             | 192.168.1.43  | Backend Node 3           |
 
-          frontend http_front
-              bind *:80
-              default_backend http_back
+---
 
-          backend http_back
-              balance roundrobin
-              server mn1 192.168.1.41:80 check
-              server mn2 192.168.1.42:80 check
-              server mn3 192.168.1.43:80 check
+## **Prerequisites**
 
-    - name: Enable and restart HAProxy
-      service:
-        name: haproxy
-        state: restarted
-        enabled: yes
+- Linux servers (CentOS/RHEL/Ubuntu)
+- Ansible installed on control node (tower1)
+- Basic networking setup (hosts accessible via SSH)
 
-========================
+---
+
+Execute below commands from you Ansible AAP.
+ansible-playbook -i inventory.yml deploy_web.yml                ---- deploys web page on three nodes
+
+ansible-playbook -i inventory.yml haproxy_setup.yml             ---- deploys haproxy on lb.example.com with backend nodes mn1 mn2 and mn3
 
 
-ansible-playbook -i inventory.yml deploy_web.yml		---- deploys web page on three nodes
-
-ansible-playbook -i inventory.yml haproxy_setup.yml		---- deploys haproxy on lb.example.com with backend nodes mn1 mn2 and mn3
